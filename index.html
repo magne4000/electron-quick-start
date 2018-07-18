@@ -11,9 +11,30 @@
     Chromium <script>document.write(process.versions.chrome)</script>,
     and Electron <script>document.write(process.versions.electron)</script>.
 
+    <p>
+      <button id="webview-src">webview.src</button>
+      <button id="webview-loadurl">webview.loadurl</button>
+      <button id="webcontents-loadurl">webview.getWebContents().loadURL</button>
+    </p>
+    <p>
+      current src: <span id="src"></span>
+    </p>
+    <webview id="webview" src="https://github.com"/>
     <script>
-      // You can also require other files to run in this process
-      require('./renderer.js')
+      const webview = document.getElementById("webview");
+      const src = document.getElementById("src");
+      document.getElementById("webview-src").onclick = () => {
+        webview.src = 'https://google.com'
+      };
+      document.getElementById("webview-loadurl").onclick = () => {
+        webview.loadURL('https://google.com');
+      };
+      document.getElementById("webcontents-loadurl").onclick = () => {
+        webview.getWebContents().loadURL('https://google.com');
+      };
+      setInterval(() => {
+        src.innerHTML = webview.src;
+      }, 1000);
     </script>
   </body>
 </html>
