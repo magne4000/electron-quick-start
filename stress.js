@@ -14,6 +14,7 @@ function blockCpuFor(ms) {
 
 function stress(stressTime, idleTime, newProcess) {
   if (newProcess) {
+    console.log('FORKED');
     const c = child_process.fork('./stress.process.js', [stressTime, idleTime]);
     const kill = () => {
       return c.kill();
@@ -21,6 +22,7 @@ function stress(stressTime, idleTime, newProcess) {
     process.on('exit', kill);
     return kill;
   }
+  if (newProcess === false) console.log('MAIN');
   const i = setInterval(() => {
     blockCpuFor(stressTime);
   }, stressTime + idleTime);
