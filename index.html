@@ -3,14 +3,28 @@
   <head>
     <meta charset="UTF-8">
     <title>Hello World!</title>
+    <style>
+      .wv {
+        height: 750px;
+      }
+      [disabled] {
+        color: grey;
+      }
+    </style>
   </head>
   <body>
-    <h1>Hello World!</h1>
+    <h1>Stress test!</h1>
+    <p>
+      <button class="stop-stress">Stop stress</button>
+      <button class="start-stress-simple">Start stress (main process)</button>
+      <button class="start-stress-fork">Start stress (main forked process)</button>
+    </p>
     <!-- All of the Node.js APIs are available in this renderer process. -->
     We are using Node.js <script>document.write(process.versions.node)</script>,
     Chromium <script>document.write(process.versions.chrome)</script>,
     and Electron <script>document.write(process.versions.electron)</script>.
 
+    <webview class="wv" src="http://animista.net/play/basic/scale-up"/>
     <script>
       // You can also require other files to run in this process
       require('./renderer.js')
