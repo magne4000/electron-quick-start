@@ -1,10 +1,11 @@
 import { ipcMain, app } from 'electron';
 import rpcchannel from 'stream-json-rpc';
+import { AppMain, bindImpl } from '../services/app/main';
 import { MainDuplex } from './helpers';
 
-export const init = () => {
-  const channel = rpcchannel();
+const channel = rpcchannel();
 
+export const init = () => {
   ipcMain.on('socket.connected', (event: any) => {
     channel.connect(new MainDuplex(event.sender));
   });
@@ -12,4 +13,8 @@ export const init = () => {
   channel.setRequestHandler('getName', () => {
     return app.getName();
   });
+};
+
+export const init2 = () => {
+  bindImpl(channel, new AppMain());
 };

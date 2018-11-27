@@ -1,5 +1,6 @@
 import { ipcRenderer } from 'electron';
 import rpcchannel from 'stream-json-rpc';
+import { AppNode } from '../services/app/node';
 import { RendererDuplex } from './helpers';
 
 const init = () => {
@@ -21,4 +22,16 @@ const initGetName = () => {
   });
 };
 
+const initGetName2 = () => {
+  const getNameBtn = document.querySelector('#getname2-btn');
+  const getNameSpan = document.querySelector('#getname2-span');
+  const appservice = new AppNode(peer);
+
+  getNameBtn.addEventListener('click', async () => {
+    getNameSpan.innerHTML = 'waiting...';
+    getNameSpan.innerHTML = await appservice.getName();
+  });
+};
+
 initGetName();
+initGetName2();

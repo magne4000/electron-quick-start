@@ -10,7 +10,7 @@ namespace RPC {
   };
 
   export type EventReceiverClientInterface<T extends EventReceiverInterface> = {
-    on: <N extends keyof T['events']>(eventName: N, callback: (...args: Extract<T['events'][N], any[]>) => void) => void,
+    on?: <N extends keyof T['events']>(eventName: N, callback: (...args: Extract<T['events'][N], any[]>) => void) => void,
   };
 
   export type Interface<T> = EventReceiverInterface & {

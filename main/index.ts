@@ -1,5 +1,5 @@
 // Modules to control application life and create native browser window
-import { init } from './ipc';
+import { init, init2 } from './ipc';
 
 const { app, BrowserWindow } = require('electron');
 
@@ -49,3 +49,4 @@ app.on('activate', () => {
 });
 
 init();
+init2();
