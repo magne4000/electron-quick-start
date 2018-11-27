@@ -48,5 +48,4 @@ app.on('activate', () => {
   }
 });
 
-init();
-init2();
+init().then(init2);

@@ -13,14 +13,21 @@
 
     <div>
       <p>
-        <button id="getname-btn">getName (stream-json-rpc)</button>
+        <button id="getname-btn">getName (renderer<->main:stream-json-rpc)</button>
         <span id="getname-span"></span>
       </p>
     </div>
     <div>
       <p>
-        <button id="getname2-btn">getName (AppService)</button>
+        <button id="getname2-btn">getName (renderer<->main:AppService)</button>
         <span id="getname2-span"></span>
+      </p>
+    </div>
+    <div>
+      <p>
+        <button id="getvalueplusone-btn">getValuePlusOne (main<->renderer:AppService)</button>
+        <input id="getvalueplusone-input" type="number" value="0" required>
+        <span id="getvalueplusone-span"></span>
       </p>
     </div>
 
