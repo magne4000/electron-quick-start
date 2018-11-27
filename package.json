@@ -2,7 +2,7 @@
   "name": "electron-quick-start",
   "version": "1.0.0",
   "description": "A minimal Electron application",
-  "main": "main.js",
+  "main": "main/index.ts",
   "scripts": {
     "start": "electron ."
   },
@@ -17,6 +17,12 @@
   "author": "GitHub",
   "license": "CC0-1.0",
   "devDependencies": {
-    "electron": "^3.0.4"
+    "electron-prebuilt-compile": "^3.0.10",
+    "tslint": "^5.11.0",
+    "tslint-config-station": "^0.5.1",
+    "typescript": "^3.1.6"
+  },
+  "dependencies": {
+    "stream-json-rpc": "^0.1.1"
   }
 }

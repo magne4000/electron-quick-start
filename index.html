@@ -11,9 +11,16 @@
     Chromium <script>document.write(process.versions.chrome)</script>,
     and Electron <script>document.write(process.versions.electron)</script>.
 
+    <div>
+      <p>
+        <button id="getname-btn">getName</button>
+        <span id="getname-span"></span>
+      </p>
+    </div>
+
     <script>
       // You can also require other files to run in this process
-      require('./renderer.js')
+      require('./renderer/index.ts')
     </script>
   </body>
 </html>
