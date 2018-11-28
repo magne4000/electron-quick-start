@@ -20,7 +20,8 @@ const getOwnMetadata = (m: symbol, aclass: any) => {
 
 export const Service = (nmsp: string) => class ServiceAbstract {
   static readonly [namespace] = nmsp;
-  peer: Peer;
+  public peer: Peer;
+  private [targetInterface]: Function;
 
   constructor(peer: Peer) {
     this.peer = peer;
@@ -28,21 +29,26 @@ export const Service = (nmsp: string) => class ServiceAbstract {
 
   public connect(channel: RPCChannel, constructor?: Function) {
     if (constructor) {
-      Reflect.defineMetadata(targetInterface, constructor, this);
+      d('setTargetInterface', constructor.name);
+      this[targetInterface] = constructor;
     }
     const md: Map<string, string> = Reflect.getMetadata(methods, this);
 
-    for (const [methodName, methodIdentifier] of md) {
+    // Some weird behavior here, we're unable to loop onto md
+    // without putting it through `Array.from`...
+    // Probably comes from electron-compile
+    for (const [methodName, methodIdentifier] of Array.from(md.entries())) {
       d('setRequestHandler', methodIdentifier);
       channel.setRequestHandler(methodIdentifier, (params: any) => {
-        return Reflect.get(this, methodName)(params);
+        d('handler called', methodName);
+        return Reflect.apply(Reflect.get(this, methodName), this, [params]);
       });
     }
   }
 };
 
 export const method = (methodIdentifier?: string): MethodDecorator => {
-  return (aclass: ReturnType<typeof Service>, methodName: string) => {
+  return (aclass: any, methodName: string) => {
     const md: Map<string, string> = getOwnMetadata(methods, aclass);
     const fullUri = `${aclass.constructor[namespace]}:${methodIdentifier || methodName}`;
     d('new method', methodName, fullUri);
@@ -50,15 +56,17 @@ export const method = (methodIdentifier?: string): MethodDecorator => {
   };
 };
 
-export const request = <T>(aclass: any, methodName: string, descriptor: TypedPropertyDescriptor<T>) => {
-  // console.log(aclass, methodName, descriptor)
-  /*
-  descriptor.get = () => ((params: any) => {
-    // tslint:disable-next-line
-    const self: Service = this;
-    const constructor: Function = Reflect.getOwnMetadata(targetInterface, self);
-    const targetMethods: Map<string, string> = Reflect.getOwnMetadata(methods, constructor);
-    d('calling request', methodName, targetMethods.get(methodName));
-    return self.peer.request(targetMethods.get(methodName), params);
-  }) as any as T;*/
+export const request = (aclass: any, methodName: string) => {
+  Object.defineProperty(aclass.constructor.prototype, methodName, {
+    get: function () {
+      // tslint:disable-next-line
+      const self: any = this;
+      return (params: any) => {
+        const constructor: Function = self[targetInterface];
+        const targetMethods: Map<string, string> = Reflect.getMetadata(methods, constructor.prototype);
+        d('calling request', methodName, targetMethods, methodName);
+        return self.peer.request(targetMethods.get(methodName), params);
+      };
+    },
+  });
 };
