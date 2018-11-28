@@ -9,13 +9,13 @@ const targetInterface = Symbol('bx:target-interface');
 
 const d = require('debug')('service:utils');
 
-const getOwnMetadata = (m: symbol, aclass: any) => {
-  let md: Map<string, string> | undefined = Reflect.getOwnMetadata(m, aclass);
+const setMetadata = (m: symbol | string, key: string, value: any, aclass: any) => {
+  let md: Map<string, any> | undefined = Reflect.getOwnMetadata(m, aclass);
   if (!md) {
     md = new Map();
     Reflect.defineMetadata(m, md, aclass);
   }
-  return md;
+  md.set(key, value);
 };
 
 export const Service = (nmsp: string) => class ServiceAbstract {
@@ -49,10 +49,9 @@ export const Service = (nmsp: string) => class ServiceAbstract {
 
 export const endpoint = (methodIdentifier?: string): MethodDecorator => {
   return (aclass: any, methodName: string) => {
-    const md: Map<string, string> = getOwnMetadata(endpoints, aclass);
     const fullUri = `${aclass.constructor[namespace]}:${methodIdentifier || methodName}`;
     d('new method', methodName, fullUri);
-    md.set(methodName, fullUri);
+    setMetadata(endpoints, methodName, fullUri, aclass);
   };
 };
 
