@@ -5,7 +5,7 @@ namespace RPC {
   export type ClientMethod<T extends any[], R> =
     (...args: T) => Promise<R>;
 
-  export type EventReceiverInterface =  {
+  export type EventReceiverInterface = {
     events?: Record<string, any[]>,
   };
 
@@ -25,8 +25,4 @@ namespace RPC {
   export type Server<T extends Interface<any>> = {
     [key in Exclude<keyof T, 'events'>]: T[key];
   };
-
-  // TODO bidirectionnal
-  // TODO 1 arg
-  // Naming: ServiceHandler // Service
 }

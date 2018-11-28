@@ -4,7 +4,7 @@ import 'reflect-metadata';
 import { RPCChannel } from 'stream-json-rpc';
 
 const namespace = Symbol('bx:namespace');
-const methods = Symbol('bx:methods');
+const endpoints = Symbol('bx:endpoints');
 const targetInterface = Symbol('bx:target-interface');
 
 const d = require('debug')('service:utils');
@@ -32,7 +32,7 @@ export const Service = (nmsp: string) => class ServiceAbstract {
       d('setTargetInterface', constructor.name);
       this[targetInterface] = constructor;
     }
-    const md: Map<string, string> = Reflect.getMetadata(methods, this);
+    const md: Map<string, string> = Reflect.getMetadata(endpoints, this);
 
     // Some weird behavior here, we're unable to loop onto md
     // without putting it through `Array.from`...
@@ -47,9 +47,9 @@ export const Service = (nmsp: string) => class ServiceAbstract {
   }
 };
 
-export const method = (methodIdentifier?: string): MethodDecorator => {
+export const endpoint = (methodIdentifier?: string): MethodDecorator => {
   return (aclass: any, methodName: string) => {
-    const md: Map<string, string> = getOwnMetadata(methods, aclass);
+    const md: Map<string, string> = getOwnMetadata(endpoints, aclass);
     const fullUri = `${aclass.constructor[namespace]}:${methodIdentifier || methodName}`;
     d('new method', methodName, fullUri);
     md.set(methodName, fullUri);
@@ -63,10 +63,11 @@ export const request = (aclass: any, methodName: string) => {
       const self: any = this;
       return (params: any) => {
         const constructor: Function = self[targetInterface];
-        const targetMethods: Map<string, string> = Reflect.getMetadata(methods, constructor.prototype);
+        const targetMethods: Map<string, string> = Reflect.getMetadata(endpoints, constructor.prototype);
         d('calling request', methodName, targetMethods, methodName);
         return self.peer.request(targetMethods.get(methodName), params);
       };
     },
+    set() {},
   });
 };
