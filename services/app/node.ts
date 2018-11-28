@@ -1,8 +1,9 @@
 import { app } from 'electron';
-import { endpoint, request, Service } from '../utils';
+import { endpoint, request, service, Service } from '../utils';
 import { IApp, IAppGgetValuePlusOneParams } from './interface';
 
-export class AppNode extends Service('app') implements RPC.Node<IApp> {
+@service('app')
+export class AppNode extends Service implements RPC.Node<IApp> {
 
   @request
   getName: RPC.Node<IApp>['getName'];

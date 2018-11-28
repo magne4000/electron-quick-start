@@ -9,6 +9,12 @@ const targetInterface = Symbol('bx:target-interface');
 
 const d = require('debug')('service:utils');
 
+export const service = (n: string) => {
+  return (aclass: any) => {
+    aclass[namespace] = n;
+  };
+};
+
 const setMetadata = (m: symbol | string, key: string, value: any, aclass: any) => {
   let md: Map<string, any> | undefined = Reflect.getOwnMetadata(m, aclass);
   if (!md) {
@@ -18,8 +24,7 @@ const setMetadata = (m: symbol | string, key: string, value: any, aclass: any) =
   md.set(key, value);
 };
 
-export const Service = (nmsp: string) => class ServiceAbstract {
-  static readonly [namespace] = nmsp;
+export class Service {
   public peer: Peer;
   private [targetInterface]: Function;
 
