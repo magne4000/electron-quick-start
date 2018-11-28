@@ -1,9 +1,8 @@
-import { ipcMain, app } from 'electron';
-import rpcchannel from 'stream-json-rpc';
-import { AppMain} from '../services/app/main';
-import { bindImpl } from '../services/app/node';
-import { MainDuplex } from './helpers';
 import Peer from '@magne4000/json-rpc-peer';
+import { app, ipcMain } from 'electron';
+import rpcchannel from 'stream-json-rpc';
+import { AppMain } from '../services/app/main';
+import { MainDuplex } from './helpers';
 
 const channel = rpcchannel();
 
@@ -20,5 +19,9 @@ export const init = () => {
 };
 
 export const init2 = (peer: Peer) => {
-  bindImpl(channel, new AppMain(peer));
+  const appMain = new AppMain(peer);
+  // Dynamic import to avoid circular deps
+  import('../services/app/node').then(({ AppNode }) => {
+    appMain.connect(channel, AppNode);
+  });
 };

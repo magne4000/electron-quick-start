@@ -6,6 +6,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "inlineSourceMap": true,
+    "module": "commonjs",
     "lib": [
       "es2015",
       "dom"

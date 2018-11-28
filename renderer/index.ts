@@ -1,6 +1,5 @@
 import { ipcRenderer } from 'electron';
 import rpcchannel from 'stream-json-rpc';
-import { bindImpl } from '../services/app/main';
 import { AppNode } from '../services/app/node';
 import { RendererDuplex } from './helpers';
 
@@ -32,7 +31,10 @@ const initAppService = () => {
   const getValuePlusOneSpan = document.querySelector('#getvalueplusone-span');
 
   const appservice = new AppNode(peer);
-  bindImpl(channel, appservice);
+  // Dynamic import to avoid circular deps
+  import('../services/app/main').then(({ AppMain }) => {
+    appservice.connect(channel, AppMain);
+  });
 
   getNameBtn.addEventListener('click', async () => {
     getNameSpan.innerHTML = 'waiting...';

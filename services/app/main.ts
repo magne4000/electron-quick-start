@@ -1,27 +1,17 @@
-import Peer from '@magne4000/json-rpc-peer';
 import { app } from 'electron';
-import { RPCChannel } from 'stream-json-rpc';
+import { method, request, Service } from '../utils';
 import { IApp, IAppGgetValuePlusOneParams } from './interface';
 
-export class AppMain implements RPC.Client<IApp> {
-  peer: Peer;
+export class AppMain extends Service('app') implements RPC.Node<IApp> {
 
-  constructor(peer: Peer) {
-    this.peer = peer;
-  }
-
-  // @decorator to bind in main?
+  static readonly ['nmsp'] = 'guy';
+  @method()
   async getName() {
     return app.getName();
   }
 
+  @request
   async getValuePlusOne(params: IAppGgetValuePlusOneParams) {
     return this.peer.request('app:getValuePlusOne', params);
   }
 }
-
-export const bindImpl = (peer: RPCChannel, impl: RPC.Client<IApp>) => {
-  peer.setRequestHandler('app:getValuePlusOne', (params: IAppGgetValuePlusOneParams) => {
-    return impl.getValuePlusOne(params);
-  });
-};

@@ -18,7 +18,7 @@ namespace RPC {
     T[key] extends ServerMethod<any[], any> ? T[key] : never;
   };
 
-  export type Client<T extends Interface<any>> = EventReceiverClientInterface<T> & {
+  export type Node<T extends Interface<any>> = EventReceiverClientInterface<T> & {
     [key in keyof T]: T[key] extends ServerMethod<infer X, infer Y> ? ClientMethod<X, Y> : T[key];
   };
 
