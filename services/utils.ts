@@ -1,5 +1,5 @@
 import Peer from '@magne4000/json-rpc-peer';
-// tslint:disable-next-line
+// tslint:disable-next-line:no-import-side-effect
 import 'reflect-metadata';
 import { RPCChannel } from 'stream-json-rpc';
 
@@ -9,12 +9,6 @@ const targetInterface = Symbol('bx:target-interface');
 
 const d = require('debug')('service:utils');
 
-export const service = (n: string) => {
-  return (aclass: any) => {
-    aclass[namespace] = n;
-  };
-};
-
 const setMetadata = (m: symbol | string, key: string, value: any, aclass: any) => {
   let md: Map<string, any> | undefined = Reflect.getOwnMetadata(m, aclass);
   if (!md) {
@@ -22,6 +16,12 @@ const setMetadata = (m: symbol | string, key: string, value: any, aclass: any) =
     Reflect.defineMetadata(m, md, aclass);
   }
   md.set(key, value);
+};
+
+export const service = (n: string) => {
+  return (aclass: any) => {
+    aclass[namespace] = n;
+  };
 };
 
 export class Service {
@@ -50,7 +50,7 @@ export class Service {
       });
     }
   }
-};
+}
 
 export const endpoint = (methodIdentifier?: string): MethodDecorator => {
   return (aclass: any, methodName: string) => {
@@ -60,18 +60,13 @@ export const endpoint = (methodIdentifier?: string): MethodDecorator => {
   };
 };
 
-export const request = (aclass: any, methodName: string) => {
+export const request = (aclass: Service, methodName: string) => {
   Object.defineProperty(aclass.constructor.prototype, methodName, {
-    get: function () {
-      // tslint:disable-next-line
-      const self: any = this;
-      return (params: any) => {
-        const constructor: Function = self[targetInterface];
-        const targetMethods: Map<string, string> = Reflect.getMetadata(endpoints, constructor.prototype);
-        d('calling request', methodName, targetMethods, methodName);
-        return self.peer.request(targetMethods.get(methodName), params);
-      };
+    value: function (this: Service, params: any) {
+      const constructor: Function = this[targetInterface];
+      const targetMethods: Map<string, string> = Reflect.getMetadata(endpoints, constructor.prototype);
+      d('calling request', methodName, targetMethods, methodName);
+      return this.peer.request(targetMethods.get(methodName), params);
     },
-    set() {},
   });
 };
