@@ -23,9 +23,9 @@ export const service = (n: string) => {
   };
 };
 
-export class Service {
+export abstract class Service {
   public peer: RPCChannelPeer;
-  private [targetInterface]: Function;
+  private [targetInterface]: Function | undefined;
 
   constructor(peer: RPCChannelPeer) {
     this.peer = peer;
@@ -62,7 +62,12 @@ export const endpoint = (methodIdentifier?: string): MethodDecorator => {
 export const request = (aclass: Service, methodName: string) => {
   Object.defineProperty(aclass.constructor.prototype, methodName, {
     value: function (this: Service, params: any) {
-      const constructor: Function = this[targetInterface];
+      const constructor: Function | undefined = this[targetInterface];
+      if (!constructor) {
+        throw new Error('No remote class where given to `connect` method. ' +
+          `Can't make remote request.`);
+      }
+
       const targetMethods: Map<string, string> = Reflect.getMetadata(endpoints, constructor.prototype);
       d('calling request', methodName, targetMethods, methodName);
       return this.peer.request(targetMethods.get(methodName), params);
