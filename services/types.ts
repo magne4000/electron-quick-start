@@ -1,9 +1,9 @@
 namespace RPC {
-  export type ServerMethod<T extends any[], R> =
+  export type RequestOrNotificationMethod<T extends any[], R> =
     (...args: T) => Promise<R> | R;
 
   export type ClientMethod<T extends any[], R> =
-    (...args: T) => Promise<R>;
+    (...args: T) => R extends void ? void : Promise<R>;
 
   export type EventReceiverInterface = {
     events?: Record<string, any[]>,
@@ -15,11 +15,13 @@ namespace RPC {
 
   export type Interface<T> = EventReceiverInterface & {
     [key in Exclude<Extract<keyof T, string>, keyof EventReceiverInterface>]:
-    T[key] extends ServerMethod<any[], any> ? T[key] : never;
+    T[key] extends RequestOrNotificationMethod<any[], any> ? T[key] : never;
   };
 
   export type Node<T extends Interface<any>> = EventReceiverClientInterface<T> & {
-    [key in keyof T]: T[key] extends ServerMethod<infer X, infer Y> ? ClientMethod<X, Y> : T[key];
+    [key in keyof T]:
+      T[key] extends RequestOrNotificationMethod<infer Y, infer Z> ? ClientMethod<Y, Z> :
+        T[key];
   };
 
   export type Server<T extends Interface<any>> = {

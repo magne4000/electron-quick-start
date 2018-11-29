@@ -17,4 +17,9 @@ export class AppMain extends Service implements RPC.Node<IApp> {
   askGetValuePlusOne(params: IAppGgetValuePlusOneParams) {
     return this.getValuePlusOne(params);
   }
+
+  @endpoint({ type: 'notification' })
+  onAppSomething() {
+    console.log('received event');
+  }
 }

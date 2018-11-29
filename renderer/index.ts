@@ -29,6 +29,8 @@ const initAppService = () => {
   const getValuePlusOneBtn = document.querySelector('#getvalueplusone-btn');
   const getValuePlusOneInput = document.querySelector<HTMLInputElement>('#getvalueplusone-input');
   const getValuePlusOneSpan = document.querySelector('#getvalueplusone-span');
+  const getOnAppSomethingBtn = document.querySelector('#notify-btn');
+  const getOnAppSomethingSpan = document.querySelector('#notify-span');
 
   const appservice = new AppNode(peer);
   // Dynamic import to avoid circular deps
@@ -45,6 +47,12 @@ const initAppService = () => {
     const value = parseInt(getValuePlusOneInput.value, 10);
     getValuePlusOneSpan.innerHTML = 'waiting...';
     getValuePlusOneSpan.innerHTML = String(await appservice.askGetValuePlusOne({ value }));
+  });
+
+  getOnAppSomethingBtn.addEventListener('click', async () => {
+    getOnAppSomethingSpan.innerHTML = 'waiting...';
+    appservice.onAppSomething();
+    getOnAppSomethingSpan.innerHTML = 'sent';
   });
 };
 
