@@ -1,7 +1,6 @@
-import Peer from '@magne4000/json-rpc-peer';
 // tslint:disable-next-line:no-import-side-effect
 import 'reflect-metadata';
-import { RPCChannel } from 'stream-json-rpc';
+import { RPCChannelPeer } from 'stream-json-rpc';
 
 const namespace = Symbol('bx:namespace');
 const endpoints = Symbol('bx:endpoints');
@@ -25,14 +24,14 @@ export const service = (n: string) => {
 };
 
 export class Service {
-  public peer: Peer;
+  public peer: RPCChannelPeer;
   private [targetInterface]: Function;
 
-  constructor(peer: Peer) {
+  constructor(peer: RPCChannelPeer) {
     this.peer = peer;
   }
 
-  public connect(channel: RPCChannel, constructor?: Function) {
+  public connect(constructor?: Function) {
     if (constructor) {
       d('setTargetInterface', constructor.name);
       this[targetInterface] = constructor;
@@ -44,7 +43,7 @@ export class Service {
     // Probably comes from electron-compile
     for (const [methodName, methodIdentifier] of Array.from(md.entries())) {
       d('setRequestHandler', methodIdentifier);
-      channel.setRequestHandler(methodIdentifier, (params: any) => {
+      this.peer.setRequestHandler(methodIdentifier, (params: any) => {
         d('handler called', methodName);
         return Reflect.apply(Reflect.get(this, methodName), this, [params]);
       });

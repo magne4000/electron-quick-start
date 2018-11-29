@@ -33,7 +33,7 @@ const initAppService = () => {
   const appservice = new AppNode(peer);
   // Dynamic import to avoid circular deps
   import('../services/app/main').then(({ AppMain }) => {
-    appservice.connect(channel, AppMain);
+    appservice.connect(AppMain);
   });
 
   getNameBtn.addEventListener('click', async () => {
@@ -44,7 +44,7 @@ const initAppService = () => {
   getValuePlusOneBtn.addEventListener('click', async () => {
     const value = parseInt(getValuePlusOneInput.value, 10);
     getValuePlusOneSpan.innerHTML = 'waiting...';
-    getValuePlusOneSpan.innerHTML = await appservice.askGetValuePlusOne({ value });
+    getValuePlusOneSpan.innerHTML = String(await appservice.askGetValuePlusOne({ value }));
   });
 };
 
