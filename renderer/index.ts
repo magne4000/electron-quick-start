@@ -3,10 +3,10 @@ import rpcchannel from 'stream-json-rpc';
 import { AppNode } from '../services/app/node';
 import { RendererDuplex } from './helpers';
 
-const channel = rpcchannel();
+const channel = rpcchannel(new RendererDuplex());
 
 const init = () => {
-  const mainPeer = channel.connect(new RendererDuplex());
+  const mainPeer = channel.peer();
   ipcRenderer.send('socket.connected', 'renderer1');
   return mainPeer;
 };

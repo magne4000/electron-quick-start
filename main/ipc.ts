@@ -3,12 +3,12 @@ import rpcchannel, { RPCChannelPeer } from 'stream-json-rpc';
 import { AppMain } from '../services/app/main';
 import { MainDuplex } from './helpers';
 
-const channel = rpcchannel();
-
 export const init = () => {
   return new Promise((resolve) => {
     ipcMain.on('socket.connected', (event: any) => {
-      const peer = channel.connect(new MainDuplex(event.sender));
+      const channel = rpcchannel(new MainDuplex(event.sender));
+
+      const peer = channel.peer();
       peer.setRequestHandler('getName', () => {
         return app.getName();
       });
