@@ -1,6 +1,6 @@
 // tslint:disable-next-line:no-import-side-effect
 import 'reflect-metadata';
-import { RPCChannelPeer } from 'stream-json-rpc';
+import { RPCChannelPeer, RPCChannel } from 'stream-json-rpc';
 
 type Endpoint = {
   type: 'request' | 'notification',
@@ -39,8 +39,8 @@ export abstract class Service {
   public peer: RPCChannelPeer;
   private [targetInterface]: Function | undefined;
 
-  constructor(peer: RPCChannelPeer) {
-    this.peer = peer;
+  constructor(channel: RPCChannel, linkId?: string) {
+    this.peer = channel.peer(linkId || (this.constructor as any)[namespace]);
   }
 
   public connect(constructor?: Function) {
@@ -55,6 +55,7 @@ export abstract class Service {
     // Probably comes from electron-compile
     for (const [methodName, methodInfos] of Array.from(md.entries())) {
       const methodIdentifier = methodInfos.getId();
+      console.log(methodInfos)
       d('defining a new handler', methodInfos.type, methodIdentifier);
       if (methodInfos.type === 'request') {
         this.peer.setRequestHandler(methodIdentifier, (params: any) => {
@@ -73,15 +74,15 @@ export abstract class Service {
 
 type EndpointOptions = {
   methodIdentifier?: string,
-  type: 'request' | 'notification',
+  type?: 'request' | 'notification',
 };
 
-export const endpoint = (options: EndpointOptions = { type: 'request' }): MethodDecorator => {
+export const endpoint = (options: EndpointOptions = {}): MethodDecorator => {
   return (aclass: any, methodName: string) => {
     const fullUriGetter = () => `${aclass.constructor[namespace]}:${options.methodIdentifier || methodName}`;
     const infos: Endpoint = {
       getId: fullUriGetter,
-      type: options.type,
+      type: options.type || 'request',
     };
     d('new method', methodName);
     setMetadata(endpoints, methodName, infos, aclass);

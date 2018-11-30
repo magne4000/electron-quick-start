@@ -1,5 +1,5 @@
 import { app, ipcMain } from 'electron';
-import rpcchannel, { RPCChannelPeer } from 'stream-json-rpc';
+import rpcchannel, { RPCChannel } from 'stream-json-rpc';
 import { AppMain } from '../services/app/main';
 import { MainDuplex } from './helpers';
 
@@ -8,17 +8,17 @@ export const init = () => {
     ipcMain.on('socket.connected', (event: any) => {
       const channel = rpcchannel(new MainDuplex(event.sender));
 
-      const peer = channel.peer();
+      const peer = channel.peer('dummy');
       peer.setRequestHandler('getName', () => {
         return app.getName();
       });
-      resolve(peer);
+      resolve(channel);
     });
   });
 };
 
-export const init2 = (peer: RPCChannelPeer) => {
-  const appMain = new AppMain(peer);
+export const init2 = (channel: RPCChannel) => {
+  const appMain = new AppMain(channel);
   // Dynamic import to avoid circular deps
   import('../services/app/node').then(({ AppNode }) => {
     appMain.connect(AppNode);

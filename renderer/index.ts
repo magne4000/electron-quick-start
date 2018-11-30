@@ -6,7 +6,7 @@ import { RendererDuplex } from './helpers';
 const channel = rpcchannel(new RendererDuplex());
 
 const init = () => {
-  const mainPeer = channel.peer();
+  const mainPeer = channel.peer('dummy');
   ipcRenderer.send('socket.connected', 'renderer1');
   return mainPeer;
 };
@@ -32,7 +32,7 @@ const initAppService = () => {
   const getOnAppSomethingBtn = document.querySelector('#notify-btn');
   const getOnAppSomethingSpan = document.querySelector('#notify-span');
 
-  const appservice = new AppNode(peer);
+  const appservice = new AppNode(channel);
   // Dynamic import to avoid circular deps
   import('../services/app/main').then(({ AppMain }) => {
     appservice.connect(AppMain);
