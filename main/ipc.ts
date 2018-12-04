@@ -1,7 +1,12 @@
 import { app, ipcMain } from 'electron';
 import rpcchannel, { RPCChannel } from 'stream-json-rpc';
-import { AppMain } from '../services/app/main';
+import { AppMain, AppMainObserver, AppMainVersion } from '../services/app/main';
+import { registry } from '../services/utils';
 import { MainDuplex } from './helpers';
+
+registry.add(AppMain);
+registry.add(AppMainVersion);
+registry.add(AppMainObserver);
 
 export const init = () => {
   return new Promise((resolve) => {

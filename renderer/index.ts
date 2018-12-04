@@ -1,7 +1,12 @@
 import { ipcRenderer } from 'electron';
 import rpcchannel from 'stream-json-rpc';
-import { AppNode } from '../services/app/node';
+import { AppNode, AppNodeObserver, AppNodeVersion } from '../services/app/node';
+import { registry } from '../services/utils';
 import { RendererDuplex } from './helpers';
+
+registry.add(AppNode);
+registry.add(AppNodeVersion);
+registry.add(AppNodeObserver);
 
 const channel = rpcchannel(new RendererDuplex());
 
@@ -29,13 +34,17 @@ const initAppService = () => {
   const getValuePlusOneBtn = document.querySelector('#getvalueplusone-btn');
   const getValuePlusOneInput = document.querySelector<HTMLInputElement>('#getvalueplusone-input');
   const getValuePlusOneSpan = document.querySelector('#getvalueplusone-span');
-  const getOnAppSomethingBtn = document.querySelector('#notify-btn');
-  const getOnAppSomethingSpan = document.querySelector('#notify-span');
+  const getRequestNotificationsBtn = document.querySelector('#notify-btn');
+  const getRequestNotificationsSpan = document.querySelector('#notify-span');
+  const getVersionBtn = document.querySelector('#version-btn');
+  const getVersionSpan = document.querySelector('#version-span');
 
   const appservice = new AppNode(channel);
+  const observer = new AppNodeObserver(channel);
   // Dynamic import to avoid circular deps
-  import('../services/app/main').then(({ AppMain }) => {
+  import('../services/app/main').then(({ AppMain, AppMainObserver }) => {
     appservice.connect(AppMain);
+    observer.connect(AppMainObserver);
   });
 
   getNameBtn.addEventListener('click', async () => {
@@ -49,10 +58,19 @@ const initAppService = () => {
     getValuePlusOneSpan.innerHTML = String(await appservice.askGetValuePlusOne({ value }));
   });
 
-  getOnAppSomethingBtn.addEventListener('click', async () => {
-    getOnAppSomethingSpan.innerHTML = 'waiting...';
-    appservice.onAppSomething();
-    getOnAppSomethingSpan.innerHTML = 'sent';
+  getRequestNotificationsBtn.addEventListener('click', async () => {
+    getRequestNotificationsSpan.innerHTML = 'waiting...';
+    appservice.requestNotifications(observer);
+    getRequestNotificationsSpan.innerHTML = 'notifications requested, you can now click on version';
+  });
+
+  getVersionBtn.addEventListener('click', async () => {
+    getVersionSpan.innerHTML = 'waiting...';
+    if (!observer.appVersion) {
+      getVersionSpan.innerHTML = 'appVersion not set. Click on requestNotifications button.';
+    } else {
+      getVersionSpan.innerHTML = await observer.appVersion.getVersion();
+    }
   });
 };
 
