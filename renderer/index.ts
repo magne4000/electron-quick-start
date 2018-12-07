@@ -1,12 +1,12 @@
 import { ipcRenderer } from 'electron';
 import rpcchannel from 'stream-json-rpc';
-import { AppNode, AppNodeObserver, AppNodeVersion } from '../services/app/node';
+import { AppService, AppVersionService } from '../services/app/main';
+import { AppObserver } from '../services/app/node';
 import { registry } from '../services/utils';
 import { RendererDuplex } from './helpers';
 
-registry.add(AppNode);
-registry.add(AppNodeVersion);
-registry.add(AppNodeObserver);
+registry.add(AppObserver);
+registry.add(AppVersionService);
 
 const channel = rpcchannel(new RendererDuplex());
 
@@ -31,31 +31,18 @@ const initGetName = () => {
 const initAppService = () => {
   const getNameBtn = document.querySelector('#getname2-btn');
   const getNameSpan = document.querySelector('#getname2-span');
-  const getValuePlusOneBtn = document.querySelector('#getvalueplusone-btn');
-  const getValuePlusOneInput = document.querySelector<HTMLInputElement>('#getvalueplusone-input');
-  const getValuePlusOneSpan = document.querySelector('#getvalueplusone-span');
   const getRequestNotificationsBtn = document.querySelector('#notify-btn');
   const getRequestNotificationsSpan = document.querySelector('#notify-span');
   const getVersionBtn = document.querySelector('#version-btn');
   const getVersionSpan = document.querySelector('#version-span');
 
-  const appservice = new AppNode(channel);
-  const observer = new AppNodeObserver(channel);
-  // Dynamic import to avoid circular deps
-  import('../services/app/main').then(({ AppMain, AppMainObserver }) => {
-    appservice.connect(AppMain);
-    observer.connect(AppMainObserver);
-  });
+  // const appservice = new AppNode(channel);
+  const appservice = new AppService.Node(channel, '__default__');
+  const observer = new AppObserver(channel);
 
   getNameBtn.addEventListener('click', async () => {
     getNameSpan.innerHTML = 'waiting...';
     getNameSpan.innerHTML = await appservice.getName();
-  });
-
-  getValuePlusOneBtn.addEventListener('click', async () => {
-    const value = parseInt(getValuePlusOneInput.value, 10);
-    getValuePlusOneSpan.innerHTML = 'waiting...';
-    getValuePlusOneSpan.innerHTML = String(await appservice.askGetValuePlusOne({ value }));
   });
 
   getRequestNotificationsBtn.addEventListener('click', async () => {

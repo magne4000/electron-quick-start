@@ -1,46 +1,37 @@
 import { app } from 'electron';
-import { endpoint, notify, ObserverService, request, service, Service } from '../utils';
-import { IApp, IAppGgetValuePlusOneParams, IAppObserver, IAppVersion } from './interface';
+import { getNode, service, ServiceSimple } from '../utils';
+import { IApp, IAppObserver, IAppVersion } from './interface';
 
 @service('app')
-export class AppMain extends Service implements RPC.Node<IApp> {
-
-  @request
-  getValuePlusOne: RPC.Node<IApp>['getValuePlusOne'];
-
-  @endpoint()
+export class AppService extends ServiceSimple<AppService> implements RPC.Node<IApp> {
   async getName() {
     return app.getName();
   }
 
-  @endpoint()
-  askGetValuePlusOne(params: IAppGgetValuePlusOneParams) {
-    return this.getValuePlusOne(params);
-  }
-
-  @endpoint()
   async requestNotifications(observer: RPC.Node<IAppObserver>) {
     console.log('calling onAppSomething');
-    const a = new AppMainVersion(this.channel);
-    const { AppNodeVersion } = await import('./node');
-    a.connect(AppNodeVersion);
-    observer.onAppSomething(a);
+    const a = new AppVersionService(this.channel);
+    // TODO
+    // observer.onAppSomething({ getVersion() { return 1 } });
+    observer.onAppVersionSimple({ appVersion: await a.getVersion() });
+    observer.onAppVersion(a);
+
     return () => {}; // unsubscribe
+  }
+
+  static get Node(): typeof AppService {
+    return getNode(this);
   }
 }
 
 @service('app:version')
-export class AppMainVersion extends ObserverService implements RPC.Node<IAppVersion> {
+export class AppVersionService extends ServiceSimple<AppVersionService> implements RPC.Node<IAppVersion> {
 
-  @endpoint()
   async getVersion() {
     return app.getVersion();
   }
-}
 
-@service('app:observer')
-export class AppMainObserver extends ObserverService implements RPC.Node<IAppObserver> {
-
-  @notify
-  onAppSomething: RPC.Node<IAppObserver>['onAppSomething'];
+  static get Node(): typeof AppVersionService {
+    return getNode(this);
+  }
 }
