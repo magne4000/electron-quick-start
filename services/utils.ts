@@ -13,6 +13,7 @@ type EndpointMap = Map<string, Endpoint>;
 const namespace = Symbol('bx:namespace');
 const endpoints = Symbol('bx:endpoints');
 const targetInterface = Symbol('bx:target-interface');
+const bxobserver = 'bx:observer';
 
 const d = require('debug')('service:utils');
 
@@ -52,6 +53,48 @@ const setMetadata = (m: symbol | string, key: string, value: any, aclass: any) =
   md.set(key, value);
 };
 
+export class ServicePeerHandler {
+  public channel: RPCChannel;
+
+  constructor(channel: RPCChannel) {
+    this.channel = channel;
+  }
+
+  public connect(srvc: ServiceBase, constructor?: Function): RPCChannelPeer {
+    if (constructor) {
+      d('setTargetInterface', constructor.name);
+      srvc[targetInterface] = constructor;
+    }
+    const peer = this.channel.peer(`${(srvc.constructor as any)[namespace]}:${srvc.uuid}`);
+    const md: EndpointMap = Reflect.getMetadata(endpoints, srvc) || new Map();
+
+    // Some weird behavior here, we're unable to loop onto md
+    // without putting it through `Array.from`...
+    // Probably comes from electron-compile
+    for (const [methodName, methodInfos] of Array.from(md.entries())) {
+      this.remoteMethodHandler(peer, srvc, methodName, methodInfos);
+    }
+    // TODO release peer on both sides when not used anymore
+    return peer;
+  }
+
+  protected remoteMethodHandler(peer: RPCChannelPeer, srvc: ServiceBase, methodName: string, methodInfos: Endpoint) {
+    const methodIdentifier = methodInfos.getId();
+    d('defining a new handler', methodInfos.type, methodIdentifier);
+    if (methodInfos.type === 'request') {
+      peer.setRequestHandler(methodIdentifier, (params: any) => {
+        d('request handler called', methodName);
+        return Reflect.apply(Reflect.get(srvc, methodName), srvc, [unserializeParams(this.channel, params)]);
+      });
+    } else {
+      peer.setNotificationHandler(methodIdentifier, (params: any) => {
+        d('notification handler called', methodName);
+        Reflect.apply(Reflect.get(srvc, methodName), srvc, [unserializeParams(this.channel, params)]);
+      });
+    }
+  }
+}
+
 export abstract class ServiceBase {
   public channel: RPCChannel;
   public uuid: string;
@@ -63,7 +106,6 @@ export abstract class ServiceBase {
     this.uuid = uuid || uuidv4();
     this.channel = channel;
     this.peer = channel.peer(`${(this.constructor as any)[namespace]}:${this.uuid}`);
-    // TODO release peer on both sides when not used anymore
   }
 
   public connect(constructor?: Function) {
@@ -79,7 +121,6 @@ export abstract class ServiceBase {
     for (const [methodName, methodInfos] of Array.from(md.entries())) {
       this.remoteMethodHandler(methodName, methodInfos);
     }
-    console.log(Array.from(this.peer.requestHandlers.keys()));
   }
 
   protected remoteMethodHandler(methodName: string, methodInfos: Endpoint) {
@@ -113,14 +154,20 @@ export abstract class ServiceSimple<T extends RPC.Node<T>> extends ServiceBase {
   */
 }
 
-export const getNode = <T extends RPC.Node<T>>(base: T): T => {
+/**
+ * TODO split in 2 separated functions
+ */
+export const getNode = <T extends RPC.Node<T>>(baseOrNamespace: T | string): T => {
   const NewClass = class extends ServiceSimple<T>{};
-  service((base as any)[namespace], { endpointsOnly: false, register: false })(NewClass);
+  const isDummyNode = typeof baseOrNamespace === 'string';
+  const nmsp = isDummyNode ? baseOrNamespace : (baseOrNamespace as any)[namespace];
+  const base = isDummyNode ? Object : (baseOrNamespace as any);
+  service(nmsp, { endpointsOnly: false, register: false })(NewClass);
   const constructorHandler = {
-    construct: (target: T, args: any[]) => {
+    construct: (target: any, args: any[]) => {
       return new Proxy(
         new NewClass(args[0], args[1]),
-        getObjectHandler(Reflect.getMetadata(endpoints, (base as any).prototype) || new Map())
+        getObjectHandler(Reflect.getMetadata(endpoints, target.prototype) || new Map())
       );
     },
   };
@@ -129,13 +176,20 @@ export const getNode = <T extends RPC.Node<T>>(base: T): T => {
       if (obj.hasOwnProperty(prop)) {
         return Reflect.get(obj, prop);
       }
+      if (isDummyNode) {
+        // Dummy Observer pointer client
+        return getPeerMethod(obj.peer, prop, {
+          type: 'notification',
+          getId: () => getFullUri(nmsp, prop),
+        });
+      }
       const methodInfos = md.get(prop);
       if (methodInfos) {
         return getPeerMethod(obj.peer, prop, methodInfos);
       }
     },
   });
-  return new Proxy(base as any, constructorHandler);
+  return new Proxy(base, constructorHandler);
 };
 
 type EndpointOptions = {
@@ -163,7 +217,14 @@ const unserializeParams = (channel: RPCChannel, params: SerializedObserver | any
   d('unserializeParams', params);
   if (params && params.$$uuid && params.$$constructor && params.$$namespace) {
     try {
+      if (params.$$namespace === bxobserver) {
+        d('unserializeParams:Observer');
+        return new (getNode(params.$$namespace) as any)(channel, params.$$uuid);
+      }
       const klass = registry.get(params.$$namespace);
+      if (!klass) {
+        throw new Error(`Unknown class for namespace ${params.$$namespace}`);
+      }
       if (klass.prototype instanceof ServiceSimple) {
         d('unserializeParams:ServiceSimple');
         return new (getNode(klass) as any)(channel, params.$$uuid);
@@ -217,6 +278,10 @@ export const getPeerMethod = (peer: RPCChannelPeer, key: string, methodInfos: En
   return (params: any) => peer.notify(methodId, serializeParams(params));
 };
 
+const getFullUri = (nmsp: string, methodName: string) => {
+  return `${nmsp}:${methodName}`;
+};
+
 export const endpoint = (options: EndpointOptions = {}) => {
   return (aclass: any, methodName: string) => {
     const fullUriGetter = () => `${aclass.constructor[namespace]}:${options.methodIdentifier || methodName}`;
@@ -268,4 +333,11 @@ const bindServiceEndpoints = (aclass: any, options: ServiceDecoratorOptions) => 
       endpoint(endpointOptions)(aclass.prototype, key);
     }
   }
+};
+
+export const observer = (channel: RPCChannel) => <T extends RPC.Interface<T>>(object: RPC.Node<T> | T): RPC.Node<T> => {
+  class DynamicObserver extends ServiceSimple<any> {}
+  Object.assign(DynamicObserver.prototype, object);
+  service(bxobserver, { observer: true, register: false })(DynamicObserver);
+  return new DynamicObserver(channel) as any as RPC.Node<T>;
 };

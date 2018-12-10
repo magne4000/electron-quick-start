@@ -1,8 +1,9 @@
 import { ipcRenderer } from 'electron';
 import rpcchannel from 'stream-json-rpc';
+import { IAppVersion } from '../services/app/interface';
 import { AppService, AppVersionService } from '../services/app/main';
 import { AppObserver } from '../services/app/node';
-import { registry } from '../services/utils';
+import { observer, registry } from '../services/utils';
 import { RendererDuplex } from './helpers';
 
 registry.add(AppObserver);
@@ -38,7 +39,8 @@ const initAppService = () => {
 
   // const appservice = new AppNode(channel);
   const appservice = new AppService.Node(channel, '__default__');
-  const observer = new AppObserver(channel);
+  const obs = new AppObserver(channel);
+  const channelObserver = observer(channel);
 
   getNameBtn.addEventListener('click', async () => {
     getNameSpan.innerHTML = 'waiting...';
@@ -47,16 +49,28 @@ const initAppService = () => {
 
   getRequestNotificationsBtn.addEventListener('click', async () => {
     getRequestNotificationsSpan.innerHTML = 'waiting...';
-    appservice.requestNotifications(observer);
+    // appservice.requestNotifications(observer);
+    appservice.requestNotifications(channelObserver(
+      {
+        onAppVersion: (appVersion: RPC.Node<IAppVersion>) => {
+          appVersion.getVersion().then((v) => {
+            console.log('appVersion retrieved', v);
+          });
+        },
+        onAppVersionSimple: ({ appVersion }: { appVersion: string }) => {
+          console.log('appVersionSimple retrieved', appVersion);
+        },
+      }
+    ));
     getRequestNotificationsSpan.innerHTML = 'notifications requested, you can now click on version';
   });
 
   getVersionBtn.addEventListener('click', async () => {
     getVersionSpan.innerHTML = 'waiting...';
-    if (!observer.appVersion) {
+    if (!obs.appVersion) {
       getVersionSpan.innerHTML = 'appVersion not set. Click on requestNotifications button.';
     } else {
-      getVersionSpan.innerHTML = await observer.appVersion.getVersion();
+      getVersionSpan.innerHTML = await obs.appVersion.getVersion();
     }
   });
 };
