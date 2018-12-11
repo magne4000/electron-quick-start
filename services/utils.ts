@@ -222,6 +222,7 @@ export const getNode = <T>(base: T): T => {
   };
   const getObjectHandler = (md: EndpointMap) => ({
     get: (obj: ServiceNode, prop: string) => {
+      console.log(obj, obj.peer)
       if (prop in obj) {
         return Reflect.get(obj, prop);
       }
