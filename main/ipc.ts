@@ -1,8 +1,8 @@
 import { app, ipcMain } from 'electron';
-import rpcchannel, { RPCChannel } from 'stream-json-rpc';
+import rpcchannel from 'stream-json-rpc';
 import { AppService, AppVersionService } from '../services/app/main';
 import { AppObserver } from '../services/app/node';
-import { registry } from '../services/utils';
+import { registry, ServicePeerHandler } from '../services/utils';
 import { MainDuplex } from './helpers';
 
 registry.add(AppService);
@@ -13,16 +13,18 @@ export const init = () => {
   return new Promise((resolve) => {
     ipcMain.on('socket.connected', (event: any) => {
       const channel = rpcchannel(new MainDuplex(event.sender));
+      const srvcPeerHandler = new ServicePeerHandler(channel);
 
       const peer = channel.peer('dummy');
       peer.setRequestHandler('getName', () => {
         return app.getName();
       });
-      resolve(channel);
+      resolve(srvcPeerHandler);
     });
   });
 };
 
-export const init2 = (channel: RPCChannel) => {
-  const appMain = new AppService(channel, '__default__');
+export const init2 = (srvcPeerHandler: ServicePeerHandler) => {
+  const appMain = new AppService('__default__');
+  srvcPeerHandler.connect(appMain);
 };

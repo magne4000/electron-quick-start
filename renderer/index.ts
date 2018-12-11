@@ -1,15 +1,16 @@
 import { ipcRenderer } from 'electron';
-import rpcchannel from 'stream-json-rpc';
+import rpcchannel, { RPCChannel } from 'stream-json-rpc';
 import { IAppVersion } from '../services/app/interface';
 import { AppService, AppVersionService } from '../services/app/main';
 import { AppObserver } from '../services/app/node';
-import { observer, registry } from '../services/utils';
+import { observer, registry, ServicePeerHandler } from '../services/utils';
 import { RendererDuplex } from './helpers';
 
 registry.add(AppObserver);
 registry.add(AppVersionService);
 
-const channel = rpcchannel(new RendererDuplex());
+const channel: RPCChannel = rpcchannel(new RendererDuplex());
+const srvcPeerHandler = new ServicePeerHandler(channel);
 
 const init = () => {
   const mainPeer = channel.peer('dummy');
@@ -38,9 +39,11 @@ const initAppService = () => {
   const getVersionSpan = document.querySelector('#version-span');
 
   // const appservice = new AppNode(channel);
-  const appservice = new AppService.Node(channel, '__default__');
-  const obs = new AppObserver(channel);
-  const channelObserver = observer(channel);
+  const appservice = new AppService.Node('__default__');
+  srvcPeerHandler.connect(appservice);
+  const obs = new AppObserver();
+  srvcPeerHandler.connect(obs);
+  const channelObserver = observer(srvcPeerHandler);
 
   getNameBtn.addEventListener('click', async () => {
     getNameSpan.innerHTML = 'waiting...';

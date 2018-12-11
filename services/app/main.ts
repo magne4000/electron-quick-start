@@ -1,16 +1,16 @@
 import { app } from 'electron';
-import { getNode, observer, service, ServiceSimple } from '../utils';
+import { getNode, service, ServiceBase } from '../utils';
 import { IApp, IAppObserver, IAppVersion } from './interface';
 
 @service('app')
-export class AppService extends ServiceSimple<AppService> implements RPC.Node<IApp> {
+export class AppService extends ServiceBase implements RPC.Node<IApp> {
   async getName() {
     return app.getName();
   }
 
   async requestNotifications(o: RPC.Node<IAppObserver>) {
     console.log('calling onAppSomething');
-    const a = new AppVersionService(this.channel);
+    const a = new AppVersionService();
     o.onAppVersionSimple({ appVersion: await a.getVersion() });
     o.onAppVersion(a);
 
@@ -23,7 +23,7 @@ export class AppService extends ServiceSimple<AppService> implements RPC.Node<IA
 }
 
 @service('app:version')
-export class AppVersionService extends ServiceSimple<AppVersionService> implements RPC.Node<IAppVersion> {
+export class AppVersionService extends ServiceBase implements RPC.Node<IAppVersion> {
 
   async getVersion() {
     return app.getVersion();
