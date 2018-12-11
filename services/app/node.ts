@@ -14,6 +14,5 @@ export class AppObserver extends ServiceBase implements RPC.Node<IAppObserver> {
 
   async onAppVersionSimple({ appVersion }: { appVersion: string }) {
     console.log('appVersionSimple retrieved', appVersion);
-    return Promise.resolve(true)
   }
 }

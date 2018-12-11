@@ -35,8 +35,8 @@ const initAppService = () => {
   const getNameSpan = document.querySelector('#getname2-span');
   const getRequestNotificationsBtn = document.querySelector('#notify-btn');
   const getRequestNotificationsSpan = document.querySelector('#notify-span');
-  const getVersionBtn = document.querySelector('#version-btn');
-  const getVersionSpan = document.querySelector('#version-span');
+  const getRequestNotificationsBtn2 = document.querySelector('#notify2-btn');
+  const getRequestNotificationsSpan2 = document.querySelector('#notify2-span');
 
   // const appservice = new AppNode(channel);
   const appservice = new AppService.Node('__default__');
@@ -52,29 +52,25 @@ const initAppService = () => {
 
   getRequestNotificationsBtn.addEventListener('click', async () => {
     getRequestNotificationsSpan.innerHTML = 'waiting...';
-    // appservice.requestNotifications(observer);
-    appservice.requestNotifications(channelObserver(
+    await appservice.requestNotifications(obs);
+    getRequestNotificationsSpan.innerHTML = 'notifications requested, see console';
+  });
+
+  getRequestNotificationsBtn2.addEventListener('click', async () => {
+    getRequestNotificationsSpan2.innerHTML = 'waiting...';
+    await appservice.requestNotifications(channelObserver(
       {
         onAppVersion: (appVersion: RPC.Node<IAppVersion>) => {
           appVersion.getVersion().then((v) => {
-            console.log('appVersion retrieved', v);
+            console.log('appVersion2 retrieved', v);
           });
         },
         onAppVersionSimple: ({ appVersion }: { appVersion: string }) => {
-          console.log('appVersionSimple retrieved', appVersion);
+          console.log('appVersionSimple2 retrieved', appVersion);
         },
       }
     ));
-    getRequestNotificationsSpan.innerHTML = 'notifications requested, you can now click on version';
-  });
-
-  getVersionBtn.addEventListener('click', async () => {
-    getVersionSpan.innerHTML = 'waiting...';
-    if (!obs.appVersion) {
-      getVersionSpan.innerHTML = 'appVersion not set. Click on requestNotifications button.';
-    } else {
-      getVersionSpan.innerHTML = await obs.appVersion.getVersion();
-    }
+    getRequestNotificationsSpan2.innerHTML = 'notifications requested, see console';
   });
 };
 

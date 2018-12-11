@@ -9,7 +9,7 @@ export class AppService extends ServiceBase implements RPC.Node<IApp> {
   }
 
   async requestNotifications(o: RPC.Node<IAppObserver>) {
-    console.log('calling onAppSomething');
+    console.log('calling requestNotifications');
     const a = new AppVersionService();
     o.onAppVersionSimple({ appVersion: await a.getVersion() });
     o.onAppVersion(a);
