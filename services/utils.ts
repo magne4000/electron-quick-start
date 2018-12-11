@@ -12,7 +12,6 @@ type EndpointMap = Map<string, Endpoint>;
 
 const namespace = Symbol('bx:namespace');
 const endpoints = Symbol('bx:endpoints');
-const requests = Symbol('bx:requests');
 const bxobserver = 'bx:observer';
 
 const d = require('debug')('service:utils');
@@ -83,22 +82,26 @@ export const service = (n: string, options: ServiceDecoratorOptions = {}) => {
 
 export class ServicePeerHandler {
   public channel: RPCChannel;
-  protected connectedServices: WeakSet<ServiceBase>;
+  protected connectedServices: WeakMap<ServiceBase, RPCChannelPeer>;
 
   constructor(channel: RPCChannel) {
     this.channel = channel;
-    this.connectedServices = new WeakSet();
+    this.connectedServices = new WeakMap();
   }
 
   public connect(srvc: ServiceBase, constructor?: Function): RPCChannelPeer {
+    if (this.isConnected(srvc)) {
+      return this.connectedServices.get(srvc);
+    }
     d('connecting', srvc.constructor.name);
+    let requestsMetadata: EndpointMap = new Map();
     if (constructor) {
       d('target interface', constructor.name);
+      requestsMetadata = Reflect.getMetadata(endpoints, constructor.prototype) || new Map();
     }
 
     const peer = this.channel.peer(`${(srvc as any)[namespace]}:${srvc.uuid}`);
     const endpointsMetadata: EndpointMap = Reflect.getMetadata(endpoints, srvc) || new Map();
-    const requestsMetadata: EndpointMap = Reflect.getMetadata(requests, srvc) || new Map();
 
     // Some weird behavior here, we're unable to loop onto md
     // without putting it through `Array.from`...
@@ -106,13 +109,13 @@ export class ServicePeerHandler {
     for (const [methodName, methodInfos] of Array.from(endpointsMetadata.entries())) {
       this.remoteMethodHandler(peer, srvc, methodName, methodInfos);
     }
-    for (const [methodName] of Array.from(requestsMetadata.entries())) {
-      this.bindRequests(peer, srvc, methodName, constructor);
+    for (const [methodName, methodInfos] of Array.from(requestsMetadata.entries())) {
+      this.bindRequests(peer, srvc, methodName, methodInfos);
     }
     if (srvc instanceof ServicePeer) {
       srvc.peer = peer;
     }
-    this.connectedServices.add(srvc);
+    this.connectedServices.set(srvc, peer);
     // TODO release peer on both sides when not used anymore
     return peer;
   }
@@ -137,20 +140,13 @@ export class ServicePeerHandler {
     }
   }
 
-  protected bindRequests(peer: RPCChannelPeer, srvc: ServiceBase, methodName: string, targetInterface: Function) {
-    const self = this;
+  protected bindRequests(peer: RPCChannelPeer, srvc: ServiceBase, methodName: string, methodInfos: Endpoint) {
+    const requestMethod = getRequestMethod(peer, methodInfos, this);
+    d('defining a new request', methodInfos.type, methodInfos.getId());
     Object.defineProperty(srvc.constructor.prototype, methodName, {
       value: function (this: ServiceBase, params: ServiceBase | any) {
         try {
-          if (!targetInterface) {
-            throw new Error('No remote class where given to `connect` method. ' +
-              `Can't make remote request.`);
-          }
-
-          const targetMethods: EndpointMap = Reflect.getMetadata(endpoints, targetInterface.prototype);
-          const methodId = targetMethods.get(methodName).getId();
-          d('calling remote', methodName, methodId);
-          return getRequestMethod(peer, methodId, params, self);
+          return requestMethod(params);
         } catch (e) {
           console.error(e);
           throw e;
@@ -189,7 +185,7 @@ export abstract class ServicePeer extends ServiceBase {
 
 @service(bxobserver, { endpointsOnly: false })
 export class ServiceObserverPeer extends ServicePeer {
-  constructor(uuid: string, srvcPeerHandler?: ServicePeerHandler) {
+  constructor(uuid: string, srvcPeerHandler: ServicePeerHandler) {
     super(uuid, srvcPeerHandler);
     return new Proxy(this, {
       get: (obj: ServiceObserverPeer, prop: string) => {
@@ -199,10 +195,10 @@ export class ServiceObserverPeer extends ServicePeer {
         if (!obj.peer) {
           throw new Error('ServiceObserverPeer not connected');
         }
-        return getRequestMethod(obj.peer, prop, {
+        return getRequestMethod(obj.peer, {
           type: 'notification',
           getId: () => getFullUri(bxobserver, prop),
-        });
+        }, srvcPeerHandler);
       },
     });
   }
@@ -222,7 +218,6 @@ export const getNode = <T>(base: T): T => {
   };
   const getObjectHandler = (md: EndpointMap) => ({
     get: (obj: ServiceNode, prop: string) => {
-      console.log(obj, obj.peer)
       if (prop in obj) {
         return Reflect.get(obj, prop);
       }
@@ -231,7 +226,7 @@ export const getNode = <T>(base: T): T => {
         if (!obj.peer) {
           throw new Error('ServiceObserverPeer not connected');
         }
-        return getRequestMethod(obj.peer, prop, methodInfos);
+        return getRequestMethod(obj.peer, methodInfos);
       }
     },
   });
@@ -278,19 +273,19 @@ const unserializeParams = (srvcPeerHandler: ServicePeerHandler, params: Serializ
       if (klass.prototype instanceof ServiceBase) {
         d('unserializeParams:ServiceBase');
         const node = new (getNode(klass) as any)(params.$$uuid);
+
+        const uri = `${params.$$namespace}:${params.$$constructor}`;
+        if (!allServicesRegistry.has(uri)) {
+          console.warn(`Unknown class in registry ${uri}`);
+          srvcPeerHandler.connect(node);
+        } else {
+          srvcPeerHandler.connect(node, allServicesRegistry.get(uri));
+        }
+
         srvcPeerHandler.connect(node);
         return node;
       }
       throw new Error('Bidirectionnal flow: not maintained for now');
-
-      const remoteService = new klass(params.$$uuid);
-      const uri = `${params.$$namespace}:${params.$$constructor}`;
-      if (!allServicesRegistry.has(uri)) {
-        throw new Error(`Unknown class in registry ${uri}`);
-      }
-      const remoteClass = allServicesRegistry.get(uri);
-      srvcPeerHandler.connect(remoteService, remoteClass);
-      return remoteService;
     } catch (e) {
       console.error(e);
       throw e;
@@ -299,18 +294,9 @@ const unserializeParams = (srvcPeerHandler: ServicePeerHandler, params: Serializ
   return params;
 };
 
-export const request = (klass: ServiceBase, methodName: string) => {
-  setMetadata(requests, methodName, true, klass);
-  Object.defineProperty(klass.constructor.prototype, methodName, {
-    value: () => {
-      throw new Error(`Can't call ${methodName} on self because service is not bound to any peer`);
-    },
-  });
-};
-
-export const getRequestMethod = (peer: RPCChannelPeer, key: string, methodInfos: Endpoint, srvcPeerHandler?: ServicePeerHandler) => {
+export const getRequestMethod = (peer: RPCChannelPeer, methodInfos: Endpoint, srvcPeerHandler?: ServicePeerHandler) => {
   const methodId = methodInfos.getId();
-  d('calling remote', methodInfos.type, key, methodId);
+  d('calling remote', methodInfos.type, methodId);
   if (methodInfos.type === 'request') {
     return (params: any) => peer.request(methodId, serializeParams(params, srvcPeerHandler));
   }
