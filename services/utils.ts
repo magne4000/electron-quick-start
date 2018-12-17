@@ -43,6 +43,31 @@ export class ServicesRegistry {
 export const registry = new ServicesRegistry();
 const allServicesRegistry = new ServicesRegistry();
 
+export class Debugger {
+  services: Set<ServiceBase>;
+
+  protected sph: ServicePeerHandler;
+
+  constructor(sph: ServicePeerHandler) {
+    this.services = new Set();
+    this.sph = sph;
+  }
+
+  addService(s: ServiceBase) {
+    this.services.add(s);
+  }
+
+  dump() {
+    console.log('-- Services --');
+    console.log(' number of instances:', this.services.size);
+    console.log(' number of multiplexed streams opened:', this.sph.channel._mux.duplexes.size);
+    console.table(Array.from(this.services).map(s => ({
+      'Service name': s.constructor.name,
+      'Peer closed': this.sph.connectedServices.get(s).closed,
+    })));
+  }
+}
+
 const setMetadata = (m: symbol | string, key: string, value: any, aclass: any) => {
   let md: Map<string, any> | undefined = Reflect.getOwnMetadata(m, aclass);
   if (!md) {
@@ -82,11 +107,15 @@ export const service = (n: string, options: ServiceDecoratorOptions = {}) => {
 
 export class ServicePeerHandler {
   public channel: RPCChannel;
-  protected connectedServices: WeakMap<ServiceBase, RPCChannelPeer>;
+  public debug: Debugger | undefined;
+  public connectedServices: WeakMap<ServiceBase, RPCChannelPeer>;
 
-  constructor(channel: RPCChannel) {
+  constructor(channel: RPCChannel, debug?: boolean) {
     this.channel = channel;
     this.connectedServices = new WeakMap();
+    if (debug) {
+      this.debug = new Debugger(this);
+    }
   }
 
   public connect(srvc: ServiceBase, constructor?: Function): RPCChannelPeer {
@@ -116,6 +145,9 @@ export class ServicePeerHandler {
       srvc.peer = peer;
     }
     this.connectedServices.set(srvc, peer);
+    if (this.debug) {
+      this.debug.addService(srvc);
+    }
     // TODO release peer on both sides when not used anymore
     return peer;
   }

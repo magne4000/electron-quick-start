@@ -10,7 +10,7 @@ registry.add(AppObserver);
 registry.add(AppVersionService);
 
 const channel: RPCChannel = rpcchannel(new RendererDuplex());
-const srvcPeerHandler = new ServicePeerHandler(channel);
+const srvcPeerHandler = new ServicePeerHandler(channel, true);
 
 const init = () => {
   const mainPeer = channel.peer('dummy');
@@ -37,6 +37,7 @@ const initAppService = () => {
   const getRequestNotificationsSpan = document.querySelector('#notify-span');
   const getRequestNotificationsBtn2 = document.querySelector('#notify2-btn');
   const getRequestNotificationsSpan2 = document.querySelector('#notify2-span');
+  const getDebugBtn = document.querySelector('#debug-btn');
 
   // const appservice = new AppNode(channel);
   const appservice = new AppService.Node('__default__');
@@ -71,6 +72,10 @@ const initAppService = () => {
       }
     ));
     getRequestNotificationsSpan2.innerHTML = 'notifications requested, see console';
+  });
+
+  getDebugBtn.addEventListener('click', () => {
+    srvcPeerHandler.debug.dump();
   });
 };
 
